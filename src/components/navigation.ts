@@ -1,8 +1,27 @@
 import { History } from 'history';
 import * as React from 'react';
 
+export interface NavigationOptions {
+    event?: React.MouseEvent;
+    replace?: boolean;
+    /**
+     * Skip the navigation if it would leave the URL unchanged, ignoring the order of the query
+     * parameters. Browsers rate limit history updates and fail once the limit is reached, so this is
+     * useful for callers that report unchanged state, such as components writing their state on mount.
+     */
+    skipIfUnchanged?: boolean;
+}
+
 export interface NavigationApi {
-    goto(path: string, query?: {[name: string]: any}, options?: { event?: React.MouseEvent, replace?: boolean }): void;
+    goto(path: string, query?: {[name: string]: any}, options?: NavigationOptions): void;
+}
+
+function sameParams(left: URLSearchParams, right: URLSearchParams): boolean {
+    const sortedLeft = new URLSearchParams(left);
+    const sortedRight = new URLSearchParams(right);
+    sortedLeft.sort();
+    sortedRight.sort();
+    return sortedLeft.toString() === sortedRight.toString();
 }
 
 export class NavigationManager implements NavigationApi {
@@ -13,7 +32,7 @@ export class NavigationManager implements NavigationApi {
         this.history = history;
     }
 
-    public goto(path: string, query: {[name: string]: any} = {}, options?: { event?: React.MouseEvent, replace?: boolean }): void {
+    public goto(path: string, query: {[name: string]: any} = {}, options?: NavigationOptions): void {
         if (path.startsWith('.')) {
             path = this.history.location.pathname + path.slice(1);
         }
@@ -32,11 +51,16 @@ export class NavigationManager implements NavigationApi {
                 }
             }
         }
+        const pathname = path;
         const urlQuery = params.toString();
         if (urlQuery !== '') {
             path = `${path}?${urlQuery}`;
         }
         options = options || {};
+        if (options.skipIfUnchanged && pathname === this.history.location.pathname
+            && sameParams(params, new URLSearchParams(this.history.location.search))) {
+            return;
+        }
         if (options.event && (options.event.metaKey || options.event.ctrlKey || options.event.button === 1)) {
             window.open(path, '_blank');
         } else {
