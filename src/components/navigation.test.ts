@@ -1,10 +1,11 @@
 import { History } from 'history';
+import * as React from 'react';
 import { NavigationManager } from './navigation';
 
-function navigationAt(pathname: string, search: string) {
+function navigationAt(pathname: string, search: string, hash = '') {
     const replace = jest.fn();
     const push = jest.fn();
-    const history = { location: { pathname, search }, replace, push } as unknown as History;
+    const history = { location: { pathname, search, hash }, replace, push } as unknown as History;
     return { navigation: new NavigationManager(history), replace, push };
 }
 
@@ -70,6 +71,25 @@ describe('NavigationManager.goto', () => {
             const { navigation, replace } = navigationAt('/applications', '?proj=default');
             navigation.goto('/settings', { proj: 'default' }, { replace: true, skipIfUnchanged: true });
             expect(replace).toHaveBeenCalledWith('/settings?proj=default');
+        });
+
+        it('navigates when the current URL has a fragment, which goto would drop', () => {
+            const { navigation, replace } = navigationAt('/applications', '?proj=default', '#example');
+            navigation.goto('.', { proj: 'default' }, { replace: true, skipIfUnchanged: true });
+            expect(replace).toHaveBeenCalledWith('/applications?proj=default');
+        });
+
+        it('still opens a new tab on a modified click', () => {
+            const open = jest.spyOn(window, 'open').mockImplementation(() => null);
+            const { navigation, replace } = navigationAt('/applications', '?proj=default');
+            navigation.goto('.', { proj: 'default' }, {
+                event: { metaKey: true } as React.MouseEvent,
+                replace: true,
+                skipIfUnchanged: true
+            });
+            expect(open).toHaveBeenCalledWith('/applications?proj=default', '_blank');
+            expect(replace).not.toHaveBeenCalled();
+            open.mockRestore();
         });
 
         it('navigates by default, so existing callers keep their behavior', () => {
