@@ -57,7 +57,9 @@ export class DataLoader<D = any, I = undefined> extends React.Component<LoaderPr
     }
 
     public componentDidMount() {
-        this.loadData();
+        this.unmounted = false;
+        const remountedWithoutSubscription = this.state.dataWrapper != null && !this.state.loading && this.subscription == null;
+        this.loadData(remountedWithoutSubscription);
     }
 
     public componentDidUpdate() {
@@ -88,9 +90,9 @@ export class DataLoader<D = any, I = undefined> extends React.Component<LoaderPr
         this.setState({ dataWrapper: null, error: false, inputChanged: true });
     }
 
-    private async loadData() {
-        if (!this.state.error && !this.state.loading && this.state.dataWrapper == null || this.state.inputChanged) {
-            this.setState({ error: false, loading: true, inputChanged: false, dataWrapper: this.props.noLoaderOnInputChange ? this.state.dataWrapper : null });
+    private async loadData(force = false) {
+        if (!this.state.error && !this.state.loading && this.state.dataWrapper == null || this.state.inputChanged || force) {
+            this.setState({ error: false, loading: true, inputChanged: false, dataWrapper: this.props.noLoaderOnInputChange || force ? this.state.dataWrapper : null });
             try {
                 const res = 'input' in this.props ? this.props.load(this.props.input) : this.props.load();
 
