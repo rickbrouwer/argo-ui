@@ -42,6 +42,8 @@ export class DataLoader<D = any, I = undefined> extends React.Component<LoaderPr
 
     private subscription: Subscription | null = null;
     private unmounted = false;
+    private resubscribeOnRemount = false;
+    private reloadOnRemount = false;
 
     constructor(props: LoaderProps<I, D>) {
         super(props);
@@ -58,8 +60,10 @@ export class DataLoader<D = any, I = undefined> extends React.Component<LoaderPr
 
     public componentDidMount() {
         this.unmounted = false;
-        const remountedWithoutSubscription = this.state.dataWrapper != null && !this.state.loading && this.subscription == null;
-        this.loadData(remountedWithoutSubscription);
+        const force = this.resubscribeOnRemount || this.reloadOnRemount;
+        this.resubscribeOnRemount = false;
+        this.reloadOnRemount = false;
+        this.loadData(force);
     }
 
     public componentDidUpdate() {
@@ -67,6 +71,7 @@ export class DataLoader<D = any, I = undefined> extends React.Component<LoaderPr
     }
 
     public componentWillUnmount() {
+        this.resubscribeOnRemount = this.subscription != null;
         this.ensureUnsubscribed();
         this.unmounted = true;
     }
@@ -100,6 +105,8 @@ export class DataLoader<D = any, I = undefined> extends React.Component<LoaderPr
                     const data = await res;
                     if (!this.unmounted) {
                         this.setState({ dataWrapper: { data }, loading: false });
+                    } else {
+                        this.reloadOnRemount = true;
                     }
                 } else {
                     this.ensureUnsubscribed();
