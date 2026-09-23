@@ -2,7 +2,7 @@ import * as React from 'react';
 import {act, render} from '@testing-library/react';
 import {screen, waitFor} from '@testing-library/dom';
 import '@testing-library/jest-dom';
-import {BehaviorSubject, Subject} from 'rxjs';
+import {BehaviorSubject, of, Subject} from 'rxjs';
 import {DataLoader} from './data-loader';
 
 // suspends its subtree from suspend() until reveal(), hiding committed siblings
@@ -156,4 +156,29 @@ test('DataLoader RTL: re-runs a promise-based load whose result arrived while hi
   await act(async () => resolvers[1]('done'));
   await waitFor(() => expect(screen.getByText('done')).toBeInTheDocument());
   expect(loadFn).toHaveBeenCalledTimes(2);
+});
+
+test('DataLoader RTL: does not reload a completed observable on hide and re-show', async () => {
+  const loadFn = jest.fn(() => of('foo'));
+  const {MaybeSuspend, suspend, reveal} = createSuspender();
+
+  const makeTree = () => (
+    <React.Suspense fallback={<p>fallback</p>}>
+      <DataLoader load={loadFn}>
+        {(result) => <p>{result}</p>}
+      </DataLoader>
+      <MaybeSuspend />
+    </React.Suspense>
+  );
+
+  const {rerender} = render(makeTree());
+  await waitFor(() => expect(screen.getByText('foo')).toBeInTheDocument());
+
+  suspend();
+  rerender(makeTree());
+  await waitFor(() => expect(screen.getByText('fallback')).toBeInTheDocument());
+
+  await act(() => reveal());
+  await waitFor(() => expect(screen.getByText('foo')).toBeInTheDocument());
+  expect(loadFn).toHaveBeenCalledTimes(1);
 });

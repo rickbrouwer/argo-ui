@@ -71,7 +71,7 @@ export class DataLoader<D = any, I = undefined> extends React.Component<LoaderPr
     }
 
     public componentWillUnmount() {
-        this.resubscribeOnRemount = this.subscription != null;
+        this.resubscribeOnRemount = this.subscription != null && !this.subscription.closed;
         this.ensureUnsubscribed();
         this.unmounted = true;
     }
