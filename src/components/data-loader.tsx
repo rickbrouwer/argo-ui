@@ -122,7 +122,7 @@ export class DataLoader<D = any, I = undefined> extends React.Component<LoaderPr
     private handleError(e: any) {
         if (!this.unmounted) {
             this.setState({ error: true, loading: false, inputChanged: false });
-            if (e.status !== 401) {
+            if (e.status !== 401 && !this.props.errorRenderer) {
                 this.appContext.apis.notifications.show({
                     content: <ErrorNotification title='Unable to load data' e={e}/>,
                     type: NotificationType.Error,
